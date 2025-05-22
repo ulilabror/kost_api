@@ -427,10 +427,6 @@ class Auth extends CI_Controller
 	{
 		$this->data['title'] = $this->lang->line('create_user_heading');
 
-		if (!$this->ion_auth->is_admin()) {
-			redirect('/', 'refresh');
-		}
-
 		$tables = $this->config->item('tables', 'ion_auth');
 		$identity_column = $this->config->item('identity', 'ion_auth');
 		$this->data['identity_column'] = $identity_column;
@@ -438,14 +434,15 @@ class Auth extends CI_Controller
 		// validate form input
 		$this->form_validation->set_rules('first_name', $this->lang->line('create_user_validation_fname_label'), 'trim|required');
 		$this->form_validation->set_rules('last_name', $this->lang->line('create_user_validation_lname_label'), 'trim');
+		$this->form_validation->set_rules('alamat', 'Alamat', 'trim|required');
+		$this->form_validation->set_rules('no_wa', 'Nomor WhatsApp', 'trim|required|numeric');
+		$this->form_validation->set_rules('role', 'Role', 'required'); // Validasi untuk dropdown role
 		if ($identity_column !== 'email') {
 			$this->form_validation->set_rules('identity', $this->lang->line('create_user_validation_identity_label'), 'trim|required|is_unique[' . $tables['users'] . '.' . $identity_column . ']');
 			$this->form_validation->set_rules('email', $this->lang->line('create_user_validation_email_label'), 'trim|required|valid_email');
 		} else {
 			$this->form_validation->set_rules('email', $this->lang->line('create_user_validation_email_label'), 'trim|required|valid_email|is_unique[' . $tables['users'] . '.email]');
 		}
-		$this->form_validation->set_rules('no_wa', $this->lang->line('create_user_validation_nowa_label'), 'trim|required');
-		$this->form_validation->set_rules('alamat', $this->lang->line('create_user_validation_alamat_label'), 'trim|required');
 		$this->form_validation->set_rules('password', $this->lang->line('create_user_validation_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|matches[password_confirm]');
 		$this->form_validation->set_rules('password_confirm', $this->lang->line('create_user_validation_password_confirm_label'), 'required');
 
@@ -453,109 +450,106 @@ class Auth extends CI_Controller
 			$email = strtolower($this->input->post('email'));
 			$identity = ($identity_column === 'email') ? $email : $this->input->post('identity');
 			$password = $this->input->post('password');
+			$alamat = $this->input->post('alamat');
+			$no_wa = $this->input->post('no_wa');
+			$role = $this->input->post('role'); // Tangkap input role
 
-			$config['upload_path']          = realpath(APPPATH . '../assets/img/avatars');
-			$config['file_ext_tolower']     = TRUE;
-			$config['allowed_types']        = 'gif|jpg|png';
-			$config['max_size']             = 100;
-			$config['max_width']            = 1024;
-			$config['max_height']           = 768;
-			$this->load->library('upload', $config);
-
-			if (!$this->upload->do_upload('userfile')) {
-				$error = array('error' => $this->upload->display_errors());
-				$this->session->set_flashdata('message', $error['error']);
-				redirect('auth/create_user', 'refresh');
-			} else {
-				$file_name = $this->upload->data('file_name');
-			}
 			$additional_data = [
 				'first_name' => $this->input->post('first_name'),
 				'last_name' => $this->input->post('last_name'),
-				'alamat' => $this->input->post('alamat'),
-				'no_wa' => $this->input->post('no_wa'),
-				'avatar' => $file_name
+				'alamat' => $alamat,
+				'no_wa' => $no_wa,
 			];
-			if ($this->ion_auth->is_admin()) {
-				$group = array($this->input->post('group'));
+
+			// Tetapkan grup berdasarkan role yang dipilih
+			$group = [$role];
+
+			if ($this->ion_auth->register($identity, $password, $email, $additional_data, $group)) {
+				$this->session->set_flashdata('message', $this->ion_auth->messages());
+				redirect("auth", 'refresh');
 			} else {
-				$group = array('2');
+				$this->session->set_flashdata('message', $this->ion_auth->errors());
+				redirect("auth/create_user", 'refresh');
 			}
-		}
-		if ($this->form_validation->run() === TRUE && $this->ion_auth->register($identity, $password, $email, $additional_data, $group)) {
-			// check to see if we are creating the user
-			// redirect them back to the admin page
-			$this->session->set_flashdata('message', $this->ion_auth->messages());
-			redirect("auth", 'refresh');
 		} else {
 			// display the create user form
-			// set the flash data error message if there is one
 			$this->data['message'] = (validation_errors() ? validation_errors() : ($this->ion_auth->errors() ? $this->ion_auth->errors() : $this->session->flashdata('message')));
 
 			$this->data['first_name'] = [
 				'name' => 'first_name',
-				'class' => 'form-control form-control-user',
 				'id' => 'first_name',
 				'type' => 'text',
 				'value' => $this->form_validation->set_value('first_name'),
 			];
 			$this->data['last_name'] = [
 				'name' => 'last_name',
-				'class' => 'form-control form-control-user',
 				'id' => 'last_name',
 				'type' => 'text',
 				'value' => $this->form_validation->set_value('last_name'),
 			];
 			$this->data['identity'] = [
 				'name' => 'identity',
-				'class' => 'form-control form-control-user',
 				'id' => 'identity',
 				'type' => 'text',
 				'value' => $this->form_validation->set_value('identity'),
 			];
 			$this->data['email'] = [
 				'name' => 'email',
-				'class' => 'form-control form-control-user',
 				'id' => 'email',
 				'type' => 'text',
 				'value' => $this->form_validation->set_value('email'),
 			];
 			$this->data['alamat'] = [
 				'name' => 'alamat',
-				'class' => 'form-control form-control-user',
 				'id' => 'alamat',
 				'type' => 'text',
 				'value' => $this->form_validation->set_value('alamat'),
 			];
 			$this->data['no_wa'] = [
 				'name' => 'no_wa',
-				'class' => 'form-control form-control-user',
 				'id' => 'no_wa',
 				'type' => 'text',
 				'value' => $this->form_validation->set_value('no_wa'),
 			];
 			$this->data['password'] = [
 				'name' => 'password',
-				'class' => 'form-control form-control-user',
 				'id' => 'password',
 				'type' => 'password',
-				'value' => $this->form_validation->set_value('password'),
 			];
 			$this->data['password_confirm'] = [
 				'name' => 'password_confirm',
-				'class' => 'form-control form-control-user',
 				'id' => 'password_confirm',
 				'type' => 'password',
-				'value' => $this->form_validation->set_value('password_confirm'),
 			];
 
-			$group_list = $this->ion_auth->groups()->result();
-			$this->data['group_list'] = $group_list;
+			// Tentukan opsi dropdown berdasarkan apakah admin atau bukan
+			if ($this->ion_auth->is_admin()) {
+				$this->data['role'] = [
+					'name' => 'role',
+					'id' => 'role',
+					'options' => [
+						'1' => 'Admin',
+						'2' => 'Members',
+						'3' => 'Pemilik',
+						'4' => 'Operator',
+					],
+					'selected' => $this->form_validation->set_value('role'),
+				];
+			} else {
+				$this->data['role'] = [
+					'name' => 'role',
+					'id' => 'role',
+					'options' => [
+						'2' => 'Members',
+						'3' => 'Pemilik',
+					],
+					'selected' => $this->form_validation->set_value('role', '2'), // Default ke Members
+				];
+			}
 
-			$this->_render_page('auth' . DIRECTORY_SEPARATOR . 'create_user', $this->data);
+			$this->_render_page('auth/create_user', $this->data);
 		}
 	}
-
 
 	/**
 	 * Redirect a user checking if is admin

@@ -12,7 +12,7 @@
       <meta name="description" content="">
       <meta name="author" content="">
 
-      <title>SB Admin 2 - Register</title>
+      <title>Registrasi Akun</title>
 
       <!-- Custom fonts for this template-->
       <link href="<?= base_url('assets/vendor/fontawesome-free/css/all.min.css') ?>" rel="stylesheet" type="text/css">
@@ -20,12 +20,6 @@
 
       <!-- Custom styles for this template-->
       <link href="<?= base_url('assets/sb-admin-2.min.css') ?>" rel="stylesheet">
-
-      <script>
-            <?php if (isset($message)) { ?>
-                  alert('<?= $message ?>')
-            <?php } ?>
-      </script>
 
 </head>
 
@@ -48,6 +42,14 @@
                                                       <h1 class="h4 text-gray-900 mb-4">Buat Pemilik</h1>
                                                 <?php } ?>
                                           </div>
+
+                                          <!-- Tampilkan Pesan Validasi -->
+                                          <?php if (!empty($message)) : ?>
+                                                <div class="alert alert-danger" role="alert">
+                                                      <?= $message ?>
+                                                </div>
+                                          <?php endif; ?>
+
                                           <form class="user" method="POST" action="<?= base_url('auth/create_user') ?>" enctype="multipart/form-data">
                                                 <div class="form-group row">
                                                       <div class="col-sm-6 mb-3 mb-sm-0">
@@ -83,6 +85,11 @@
                                                 <div class="form-group">
                                                       <?php echo lang('create_user_nowa_label', 'no_wa'); ?> <br />
                                                       <?php echo form_input($no_wa); ?>
+                                                </div>
+
+                                                <div class="form-group">
+                                                      <label for="role">Daftar Sebagai</label>
+                                                      <?php echo form_dropdown($role['name'], $role['options'], $role['selected'], 'class="form-control" id="role"'); ?>
                                                 </div>
 
                                                 <?php
